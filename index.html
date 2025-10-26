@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Puntu Period Punch Game 💮</title>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Comic Sans MS","Trebuchet MS",system-ui;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;background:linear-gradient(180deg,#fff0f6,#ffe6f0);
+    overflow:hidden;color:#ff267f;transition:background 1s ease;
+  }
+  .container{max-width:900px;width:100%;padding:20px;text-align:center;}
+  h1{font-size:clamp(24px,4vw,44px);color:#ff4da6;text-shadow:0 2px 6px rgba(0,0,0,0.05);}
+  #gameArea{margin-top:16px;position:relative;min-height:320px;}
+  #character{
+    width:32vmin;height:32vmin;max-width:240px;max-height:240px;margin:auto;
+    background:url('https://i.postimg.cc/YjwwdWHQ/BF9C56D3-A1DD-484C-A32C-BAF886E6C342-removebg-preview.png') center/cover no-repeat;
+    border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.1);
+    cursor:pointer;touch-action:manipulation;filter:brightness(1);
+    transition:filter 1s ease;
+  }
+  .tired{filter:brightness(0.8) saturate(0.8);}
+  .hud{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:12px;}
+  .pill{background:rgba(255,255,255,0.85);padding:8px 14px;border-radius:999px;font-weight:600;color:#ff1a7a;box-shadow:0 4px 14px rgba(255,0,120,0.05);}
+  button.small{background:rgba(255,255,255,0.95);color:#ff3a7e;border:1px solid rgba(255,0,120,0.08);padding:8px 10px;border-radius:8px;font-weight:700;cursor:pointer;}
+  #messageBox{margin-top:10px;font-size:clamp(14px,2vw,18px);color:#ff356f;max-width:700px;line-height:1.4;margin-inline:auto;}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:999;background:rgba(0,0,0,0.25);backdrop-filter:blur(4px);}
+  .card{background:linear-gradient(180deg,#fff,#fff7fb);border-radius:20px;padding:24px;max-width:520px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.15);}
+  .btn{background:#ff4da6;color:white;padding:12px 18px;border-radius:999px;border:none;font-weight:700;cursor:pointer;transition:transform .15s ease;}
+  .btn:hover{transform:scale(1.05);}
+  .controls{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+  .floating-heart{position:absolute;font-size:1.5rem;pointer-events:none;animation:floatUp 1.6s ease-out forwards;}
+  @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1;}100%{transform:translateY(-120px) scale(0.7);opacity:0;}}
+  .levelMessage{position:absolute;top:45%;left:50%;transform:translateX(-50%);font-size:clamp(16px,2.5vw,22px);color:#ff0066;text-shadow:0 2px 6px rgba(255,255,255,0.6);}
+  .finalScene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(255,255,255,0.9);z-index:99;animation:fadeIn 1.2s ease forwards;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .lily{position:absolute;width:80px;opacity:0;transform:scale(0);}
+  @media (max-width:480px){#character{width:44vmin;height:44vmin;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Puntu Period Punch Game 💮</h1>
+  <div id="gameArea">
+    <div id="character" role="button" aria-label="Punch the cutie"></div>
+    <div class="hud">
+      <div id="score" class="pill">Score: 0</div>
+      <div id="level" class="pill">Level: 1</div>
+      <button id="toggleSound" class="small">🔊 Sound On</button>
+      <button id="toggleMusic" class="small">🎵 Music On</button>
+    </div>
+    <div id="messageBox">You’re punching through the pain with grace 💗</div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="card">
+    <h2>Hi Puntu 🌸</h2>
+    <p>This little game is here to keep you company. Each punch releases a bit of the pain — every level reminds you how strong, gentle, and wonderful you are. 💖</p>
+    <div class="controls">
+      <button id="startBtn" class="btn">Start Game</button>
+      <button id="noMusic" class="small">Start Without Music</button>
+    </div>
+  </div>
+</div>
+
+<!-- GSAP & Howler -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
+<script>
+const messages=[
+  "You’re doing great 💪",
+  "Even when tired, you shine ✨",
+  "Each punch releases a cloud of comfort ☁️",
+  "You’re powerful, soft, and radiant 💞",
+  "Rest if you must, you’ve earned it 🌷",
+  "Tiny steps still count 💗",
+  "Love refills your strength 🌸",
+  "Gentle power is real power 💫",
+  "Almost there, my brave one 💝",
+  "You bloomed through it all 💮"
+];
+const colors=["#fff0f6","#ffd9ec","#ffcce6","#ffb3e6","#ff99dd","#ff80cc","#ff66b3","#ff4da6","#ff3399","#ff1a8c"];
+
+let score=0, level=1, goal=10, finalShown=false;
+
+// Sounds
+const punchSound = new Howl({src:["https://actions.google.com/sounds/v1/impacts/punch_face.ogg"],volume:0.55});
+const levelUpSound = new Howl({src:["https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"],volume:0.45});
+const bgMusic = new Howl({src:["https://cdn.pixabay.com/audio/2022/03/14/audio_7c2e3b81c2.mp3"],loop:true,volume:0.2});
+
+let soundOn=true, musicOn=true;
+
+const character=document.getElementById("character");
+const scoreDisplay=document.getElementById("score");
+const levelDisplay=document.getElementById("level");
+const messageBox=document.getElementById("messageBox");
+const overlay=document.getElementById("overlay");
+const startBtn=document.getElementById("startBtn");
+const noMusic=document.getElementById("noMusic");
+const toggleSound=document.getElementById("toggleSound");
+const toggleMusic=document.getElementById("toggleMusic");
+
+toggleSound.addEventListener("click",()=>{
+  soundOn=!soundOn;
+  toggleSound.textContent=soundOn?"🔊 Sound On":"🔈 Sound Off";
+});
+toggleMusic.addEventListener("click",()=>{
+  musicOn=!musicOn;
+  toggleMusic.textContent=musicOn?"🎵 Music On":"🎵 Music Off";
+  if(musicOn) bgMusic.play(); else bgMusic.stop();
+});
+
+startBtn.addEventListener("click",()=>{overlay.style.display="none";if(musicOn)bgMusic.play();});
+noMusic.addEventListener("click",()=>{overlay.style.display="none";musicOn=false;});
+
+character.addEventListener("click",()=>{
+  if(soundOn) punchSound.play();
+  gsap.to(character,{scale:0.9,rotation:-6,duration:0.1,ease:"back.in(2)",yoyo:true,repeat:1});
+  floatHeart(character);
+  score++;
+  scoreDisplay.textContent=`Score: ${score}`;
+  if(score>=level*goal){levelUp();}
+});
+
+function levelUp(){
+  level++;
+  levelDisplay.textContent=`Level: ${level}`;
+  messageBox.textContent=messages[(level-1)%messages.length];
+  if(soundOn) levelUpSound.play();
+  gsap.to("body",{background:`linear-gradient(180deg,${colors[level%colors.length]},#fff0f6)`,duration:1});
+  tiredness();
+  showLevelMessage();
+  if(level===10 && !finalShown){finalShown=true;showFinalScene();}
+}
+
+function tiredness(){
+  // Simulate fatigue by dimming the character slightly with each level
+  const fatigue = Math.min(0.2 + level*0.05, 0.8);
+  gsap.to(character,{filter:`brightness(${1-fatigue}) saturate(${1-fatigue})`,duration:1});
+}
+
+function floatHeart(el){
+  const rect=el.getBoundingClientRect();
+  const h=document.createElement("div");
+  h.className="floating-heart";
+  h.textContent=["💖","💘","💕","💞","💓"][Math.floor(Math.random()*5)];
+  h.style.left=rect.left+rect.width/2+"px";
+  h.style.top=rect.top+"px";
+  document.body.appendChild(h);
+  setTimeout(()=>h.remove(),1600);
+}
+
+function showLevelMessage(){
+  const msg=document.createElement("div");
+  msg.className="levelMessage";
+  msg.textContent="✨ Level Up! Your strength glows brighter 💗";
+  document.body.appendChild(msg);
+  gsap.fromTo(msg,{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.6,ease:"back.out(2)"});
+  setTimeout(()=>msg.remove(),2000);
+}
+
+function showFinalScene(){
+  const final=document.createElement("div");
+  final.className="finalScene";
+  final.innerHTML=`<h2>💮 You did it, Puntu 💮</h2>
+  <p style="color:#ff3a7e;max-width:320px;">Every click, every moment — you showed strength through softness.<br>
+  The world blooms for you now.</p>`;
+  document.body.appendChild(final);
+
+  // Bloom lilies
+  for(let i=0;i<5;i++){
+    const lily=document.createElement("img");
+    lily.src="https://upload.wikimedia.org/wikipedia/commons/7/7d/Lilium_candidum_flower.jpg";
+    lily.className="lily";
+    lily.style.left=50+(Math.random()-0.5)*200+"px";
+    lily.style.bottom=20+(Math.random()*60)+"px";
+    final.appendChild(lily);
+    gsap.to(lily,{opacity:1,scale:1,duration:1.2,delay:i*0.3,ease:"back.out(2)"});
+  }
+  gsap.from(final,{opacity:0,duration:1});
+}
+</script>
+</body>
+</html>
